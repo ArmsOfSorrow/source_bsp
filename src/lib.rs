@@ -1,31 +1,3 @@
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::str;
-
-    #[test]
-    fn load_file_by_path() {
-        let path = Path::new("testfiles/water_v2.bsp");
-        let file = load_file(path).unwrap();
-
-        let header = file.header;
-        let string = str::from_utf8(&header.magic).unwrap();
-        assert_eq!(string, "VBSP");
-        assert_eq!(header.version, 20);
-
-        assert_eq!(header.map_revision, 1555);
-    }
-
-    #[test]
-    fn plane_lumpdir_entry() {
-        let path = Path::new("testfiles/water_v2.bsp");
-        let file = load_file(path).unwrap();
-        let header = file.header;
-        let plane_lump = header.lumps[0];
-        assert_eq!(434240, plane_lump.length);
-    }
-}
-
 extern crate byteorder;
 
 use std::fs::File;
@@ -34,8 +6,11 @@ use std::io;
 use std::io::{BufReader, SeekFrom};
 use std::io::prelude::*;
 use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
+use lumps::{Vector, Lump, Plane};
 
 const HEADER_LUMPS: usize = 64;
+
+mod lumps;
 
 pub fn load_file(path: &Path) -> io::Result<BspFile> {
     let file = File::open(path)?;
@@ -75,9 +50,7 @@ fn load_header<R: BufRead>(reader: &mut R) -> BspHeader {
     }
 
     header.version = reader.read_i32::<LittleEndian>().unwrap();
-
     load_lump_directory::<_, LittleEndian>(reader, &mut header);
-
     header.map_revision = reader.read_i32::<LittleEndian>().unwrap();
 
     header
@@ -154,8 +127,16 @@ impl BspFile {
         let len = dir_entry.length;
 
         if offset != -1 && len != -1 {
+            //seek to right file location
+            reader.seek(SeekFrom::Start(offset as u64)).expect("seeking to lump offset failed");
+            
             //some enum variant...but how do we decide on loading logic?
-            //should a lump variant load itself after matching?
+            //should a lump variant load itself after matching itself?
+            let count = len as usize / lump.get_data_size();
+
+            for i in 0..count {
+                //load data and write into enum variant data
+            }
         } else {
             //none
         }
@@ -204,46 +185,39 @@ pub struct LumpDirEntry {
     pub four_cc: [u8; 4],
 }
 
-pub enum Lump {
-    Entity,
-    Plane(Vec<Plane>),
-    Vertex(Vec<Vector>)
-}
 
-impl Lump {
-    fn get_index(&self) -> usize {
-        match self {
-            &Lump::Entity => 0,
-            &Lump::Plane(ref planes) => 1, //ref prevents pattern matching from taking ownership
-            &Lump::Vertex(ref verts) => 3
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str;
+
+    #[test]
+    fn load_file_by_path() {
+        let path = Path::new("testfiles/water_v2.bsp");
+        let file = load_file(path).unwrap();
+
+        let header = file.header;
+        let string = str::from_utf8(&header.magic).unwrap();
+        assert_eq!(string, "VBSP");
+        assert_eq!(header.version, 20);
+
+        assert_eq!(header.map_revision, 1555);
     }
-}
 
-pub struct Plane {
-    normal: Vector, //normal vector
-    distance: f32,  // distance from origin
-    type_id: i32,   // plane axis identifier
-}
-
-impl Plane {
-    fn new(n: Vector, dist: f32, id: i32) -> Plane {
-        Plane {
-            normal: n,
-            distance: dist,
-            type_id: id,
-        }
+    #[test]
+    fn plane_lumpdir_entry() {
+        let path = Path::new("testfiles/water_v2.bsp");
+        let file = load_file(path).unwrap();
+        let header = file.header;
+        let plane_lump = header.lumps[0];
+        assert_eq!(434240, plane_lump.length);
     }
-}
 
-pub struct Vector {
-    x: f32,
-    y: f32,
-    z: f32,
-}
+    #[test]
+    fn load_lump_data() {
+        let path = Path::new("testfiles/water_v2.bsp");
+        let file = load_file(path).unwrap();
 
-impl Vector {
-    fn new(x: f32, y: f32, z: f32) -> Vector {
-        Vector { x: x, y: y, z: z }
+        //TODO: load lump data for index/variant
     }
 }
