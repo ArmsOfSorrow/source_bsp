@@ -6,7 +6,7 @@ use std::io;
 use std::io::{BufReader, SeekFrom};
 use std::io::prelude::*;
 use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
-use lumps::{Vector, Lump, Plane};
+use lumps::{Lump, Plane, Vector};
 
 const HEADER_LUMPS: usize = 64;
 
@@ -44,14 +44,14 @@ fn load_header<R: BufRead>(reader: &mut R) -> BspHeader {
     let magic_str = String::from_utf8_lossy(&magic);
 
     if magic_str == "VBSP" {
-        //call generic method with LittleEndian param
+        header.version = reader.read_i32::<LittleEndian>().unwrap();
+        load_lump_directory::<_, LittleEndian>(reader, &mut header);
+        header.map_revision = reader.read_i32::<LittleEndian>().unwrap();
     } else if magic_str == "PSBV" {
-        //call generic method with BigEndian param
+        header.version = reader.read_i32::<BigEndian>().unwrap();
+        load_lump_directory::<_, BigEndian>(reader, &mut header);
+        header.map_revision = reader.read_i32::<BigEndian>().unwrap();
     }
-
-    header.version = reader.read_i32::<LittleEndian>().unwrap();
-    load_lump_directory::<_, LittleEndian>(reader, &mut header);
-    header.map_revision = reader.read_i32::<LittleEndian>().unwrap();
 
     header
 }
@@ -116,26 +116,24 @@ impl BspFile {
     //what if we had load_lump<T> where we pass the lump type?
     //it wouldn't have a return value though...or would return a lumptype
     //struct with associated data?
-    pub fn load_lump<R: BufRead + Seek, O: ByteOrder>(
-        &self,
-        reader: &mut R,
-        lump: Lump
-    ) {
+    pub fn load_lump<R: BufRead + Seek, O: ByteOrder>(&self, reader: &mut R, lump: Lump) {
         let index = lump.get_index();
-        let dir_entry = self.header.lumps[index];
+        let dir_entry = self.header.lumps[index]; //instead of using index here we could do this in a BspHeader fn that gets the lump
         let offset = dir_entry.offset;
         let len = dir_entry.length;
 
         if offset != -1 && len != -1 {
             //seek to right file location
-            reader.seek(SeekFrom::Start(offset as u64)).expect("seeking to lump offset failed");
-            
+            reader
+                .seek(SeekFrom::Start(offset as u64))
+                .expect("seeking to lump offset failed");
+
             //some enum variant...but how do we decide on loading logic?
             //should a lump variant load itself after matching itself?
             let count = len as usize / lump.get_data_size();
 
             for i in 0..count {
-                //load data and write into enum variant data
+                //call load func that loads and pushes stuff into vec/variant   
             }
         } else {
             //none
