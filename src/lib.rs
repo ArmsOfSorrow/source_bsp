@@ -144,16 +144,20 @@ impl BspFile {
         &self,
         reader: &mut R,
     ) -> Option<Vec<Vector>> {
+
+        //this is the same for every type, except for the index
         let lump = self.header.lumps[3];
         let offset = lump.offset;
         let len = lump.length;
 
         if offset != -1 && len != -1 {
+            //these differ by struct size
             let vert_size = std::mem::size_of::<Vector>();
             let count = len as usize / vert_size;
             let mut v: Vec<Vector> = Vec::with_capacity(count);
 
             for i in 0..count {
+                //this depends on the type as well, but the boilerplate remains
                 let x = reader.read_f32::<O>().unwrap();
                 let y = reader.read_f32::<O>().unwrap();
                 let z = reader.read_f32::<O>().unwrap();

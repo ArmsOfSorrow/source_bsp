@@ -1,11 +1,12 @@
 use std::io::prelude::*;
 use std::mem;
+use std::marker::Sized;
 use byteorder::{ByteOrder, ReadBytesExt};
 use LumpDirEntry;
 
-// pub trait LumpData {
-//      fn load<R: BufRead, O: ByteOrder>(reader: &R) -> ::io::Result<Vec<Box<LumpData>>>;
-// }
+pub trait LumpData {
+     fn load<R: BufRead, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized;
+}
 
 pub enum Lump {
     Plane = 1,
@@ -86,16 +87,17 @@ impl Vector {
     }
 }
 
-// impl LumpData for Vector {
-//     fn load<R: BufRead, O: ByteOrder>(reader: &R) -> ::io::Result<Vec<Box<LumpData>>> {
-//         let x = reader.read_f32::<O>()?;
-//         let y = reader.read_f32::<O>()?;
-//         let z = reader.read_f32::<O>()?;
-//         let dist = reader.read_f32::<O>()?;
-//         let id = reader.read_i32::<O>()?;
+impl LumpData for Plane {
+    fn load<R: BufRead, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized {
 
-//         Ok(Vector::new(x, y, z))
-//     }
-// }
+        let x = reader.read_f32::<O>()?;
+        let y = reader.read_f32::<O>()?;
+        let z = reader.read_f32::<O>()?;
+        let vector = Vector::new(x, y, z);
+        let dist = reader.read_f32::<O>()?;
+        let id = reader.read_i32::<O>()?;
+        let plane = Plane::new(vector, dist, id);
 
-// impl LumpData for Plane {}
+        Ok(plane)
+    }
+}
