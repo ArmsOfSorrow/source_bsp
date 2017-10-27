@@ -87,13 +87,22 @@ impl Vector {
     }
 }
 
-impl LumpData for Plane {
+impl LumpData for Vector {
     fn load<R: BufRead, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized {
 
         let x = reader.read_f32::<O>()?;
         let y = reader.read_f32::<O>()?;
         let z = reader.read_f32::<O>()?;
-        let vector = Vector::new(x, y, z);
+        let vector = Vector::new(x,y,z);
+
+        Ok(vector)
+    }
+}
+
+impl LumpData for Plane {
+    fn load<R: BufRead, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized {
+
+        let vector = Vector::load::<R, O>(reader)?;
         let dist = reader.read_f32::<O>()?;
         let id = reader.read_i32::<O>()?;
         let plane = Plane::new(vector, dist, id);
