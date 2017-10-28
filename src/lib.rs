@@ -3,10 +3,10 @@ extern crate byteorder;
 use std::fs::File;
 use std::path::Path;
 use std::io;
-use std::io::{BufReader, SeekFrom};
+use std::io::{BufReader};
 use std::io::prelude::*;
 use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
-use lumps::{Lump, Plane, Vector};
+use lumps::{Plane, Vector, LumpData};
 
 const HEADER_LUMPS: usize = 64;
 
@@ -79,91 +79,27 @@ pub struct BspFile {
 }
 
 impl BspFile {
-    //loads lump 1 (planes)
-    pub fn load_planes<R: BufRead + Seek, O: ByteOrder>(
+
+    pub fn load_lump<R: BufRead + Seek, O: ByteOrder, L: LumpData>(
         &self,
         reader: &mut R,
-    ) -> io::Result<Vec<Plane>> {
-        //get lump directory entry
-        let lump = self.header.lumps[1];
-        let offset = lump.offset;
-        let len = lump.length;
+    ) -> Option<Vec<L>> {
 
-        //seek to right file location
-        reader.seek(SeekFrom::Start(offset as u64))?;
-
-        let plane_size = std::mem::size_of::<Plane>();
-        let count = len as usize / plane_size;
-        let mut v: Vec<Plane> = Vec::with_capacity(count);
-
-        //read data (4 f32, 1 i32) until we're done and push into vec
-        for i in 0..count {
-            let x = reader.read_f32::<O>()?;
-            let y = reader.read_f32::<O>()?;
-            let z = reader.read_f32::<O>()?;
-            let dist = reader.read_f32::<O>()?;
-            let id = reader.read_i32::<O>()?;
-
-            let vector = Vector::new(x, y, z);
-            let plane = Plane::new(vector, dist, id);
-
-            v[i] = plane;
-        }
-
-        Ok(v)
-    }
-
-    //what if we had load_lump<T> where we pass the lump type?
-    //it wouldn't have a return value though...or would return a lumptype
-    //struct with associated data?
-    pub fn load_lump<R: BufRead + Seek, O: ByteOrder>(&self, reader: &mut R, lump: Lump) {
-        let index = lump.get_index();
-        let dir_entry = self.header.lumps[index]; //instead of using index here we could do this in a BspHeader fn that gets the lump
-        let offset = dir_entry.offset;
-        let len = dir_entry.length;
-
-        if offset != -1 && len != -1 {
-            //seek to right file location
-            reader
-                .seek(SeekFrom::Start(offset as u64))
-                .expect("seeking to lump offset failed");
-
-            //some enum variant...but how do we decide on loading logic?
-            //should a lump variant load itself after matching itself?
-            let count = len as usize / lump.get_data_size();
-
-            for i in 0..count {
-                //call load func that loads and pushes stuff into vec/variant   
-            }
-        } else {
-            //none
-        }
-    }
-
-    pub fn load_vertices<R: BufRead + Seek, O: ByteOrder>(
-        &self,
-        reader: &mut R,
-    ) -> Option<Vec<Vector>> {
-
-        //this is the same for every type, except for the index
-        let lump = self.header.lumps[3];
+        
+        let i = L::get_index();
+        let lump = self.header.lumps[i];
         let offset = lump.offset;
         let len = lump.length;
 
         if offset != -1 && len != -1 {
             //these differ by struct size
-            let vert_size = std::mem::size_of::<Vector>();
-            let count = len as usize / vert_size;
-            let mut v: Vec<Vector> = Vec::with_capacity(count);
+            let size = std::mem::size_of::<L>();
+            let count = len as usize / size;
+            let mut v: Vec<L> = Vec::with_capacity(count);
 
             for i in 0..count {
-                //this depends on the type as well, but the boilerplate remains
-                let x = reader.read_f32::<O>().unwrap();
-                let y = reader.read_f32::<O>().unwrap();
-                let z = reader.read_f32::<O>().unwrap();
-
-                let vertex = Vector::new(x, y, z);
-                v[i] = vertex;
+                let elem = L::load::<R, O>(reader).unwrap();
+                v[i] = elem;
             }
             Some(v)
         } else {

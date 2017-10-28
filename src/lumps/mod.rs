@@ -1,52 +1,10 @@
 use std::io::prelude::*;
-use std::mem;
 use std::marker::Sized;
 use byteorder::{ByteOrder, ReadBytesExt};
-use LumpDirEntry;
 
 pub trait LumpData {
      fn load<R: BufRead, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized;
-}
-
-pub enum Lump {
-    Plane = 1,
-    Vertex = 3,
-}
-
-impl Lump {
-    pub fn get_index(&self) -> usize {
-        match self {
-            &Lump::Plane => 1, //ref prevents pattern matching from taking ownership
-            &Lump::Vertex => 3,
-        }
-    }
-
-    //returns the size of a single element of the associated data
-    pub fn get_data_size(&self) -> usize {
-        match self {
-            &Lump::Plane => mem::size_of::<Plane>(),
-            &Lump::Vertex => mem::size_of::<Plane>(),
-        }
-    }
-
-    //we could also have a loadable trait that every lump type implements...but does that
-    //make it better? since every lump is an array of elements, we could just provide
-    //a load method with a type param and implement that
-    fn load_vertex<O:ByteOrder, R: BufRead>(reader: &mut R) -> ::io::Result<Vector> { //get enum and lumpdirentry as param, return a vec or a slice here
-        let x = reader.read_f32::<O>()?;
-        let y = reader.read_f32::<O>()?;
-        let z = reader.read_f32::<O>()?;
-
-        Ok(Vector::new(x,y,z))
-    }
-
-    fn load_plane<O: ByteOrder, R: BufRead>(reader: &mut R) -> ::io::Result<Plane> {
-        let vector = Self::load_vertex::<O, R>(reader)?;
-        let dist = reader.read_f32::<O>()?;
-        let id = reader.read_i32::<O>()?;
-
-        Ok(Plane::new(vector,dist,id))
-    }
+     fn get_index() -> usize;
 }
 
 pub struct Plane {
@@ -97,6 +55,10 @@ impl LumpData for Vector {
 
         Ok(vector)
     }
+
+    fn get_index() -> usize {
+        3
+    }
 }
 
 impl LumpData for Plane {
@@ -108,5 +70,9 @@ impl LumpData for Plane {
         let plane = Plane::new(vector, dist, id);
 
         Ok(plane)
+    }
+
+    fn get_index() -> usize {
+        1
     }
 }
