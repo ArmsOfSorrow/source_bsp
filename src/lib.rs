@@ -18,58 +18,20 @@ mod lumps;
 //- no unwrap in lib code
 
 pub struct BspFile<T> where T: Read + Seek {
-    // header: BspHeader,
+    header: BspHeader,
     //a data source we can read from and seek
     reader: T
 }
 
 impl<T> BspFile<T> where T: Read + Seek {
-    pub fn new(r: T) -> BspFile<T> {
+    pub fn new(mut r: T) -> io::Result<BspFile<T>> {
         //maybe we should create a custom error type for that (or is there one
         //for invalid format already?)
         
-        //and read_header should be BspHeader's new() function,
-        //since we can't access self from here.
-        BspFile { reader: r }
+        let bsp_header = BspHeader::new(&mut r)?;
+        let bsp_file = BspFile { header: bsp_header, reader: r };
+        Ok(bsp_file)
     }
-
-    // fn read_header(&mut self) -> io::Result<BspHeader> {
-    //     let mut header = BspHeader {
-    //         magic: [0; 4],
-    //         version: -1,
-    //         lumps: [LumpDirEntry {
-    //             offset: -1,
-    //             length: -1,
-    //             version: -1,
-    //             four_cc: [0; 4],
-    //         }; HEADER_LUMPS],
-    //         map_revision: -1,
-    //     };
-
-    //     //TODO: seek to beginning before reading
-
-    //     let mut magic = [0u8; 4];
-    //     self.reader.read(&mut magic)?;
-
-    //     //check if it's VBSP or PSBV (little or big endian), then use byteorder
-    //     //to read shit
-    //     header.magic = magic;
-    //     let magic_str = String::from_utf8_lossy(&magic);
-
-    //     if magic_str == "VBSP" {
-    //         header.version = self.reader.read_i32::<LittleEndian>()?;
-    //         Self::read_lump_directory::<LittleEndian>(self, &mut header);
-    //         header.map_revision = self.reader.read_i32::<LittleEndian>()?;
-    //     } else if magic_str == "PSBV" {
-    //         header.version = self.reader.read_i32::<BigEndian>()?;
-    //         Self::read_lump_directory::<BigEndian>(self, &mut header);
-    //         header.map_revision = self.reader.read_i32::<BigEndian>()?;
-    //     } /*else {
-    //         Err("The specified file is not a valid source BSP file")
-    //     }*/
-
-    //     Ok(header)
-    // }
 
 //hm, this requires the header to be part of BspFile again. How should we deal with it?
 //implementing Default for BspHeader would be easiest, I think. Pr just call read_header
@@ -95,24 +57,6 @@ impl<T> BspFile<T> where T: Read + Seek {
     //         Some(v)
     //     } else {
     //         None
-    //     }
-    // }
-
-    // fn read_lump_directory<O: ByteOrder>(&mut self, header: &mut BspHeader) {
-    //     for index in 0..HEADER_LUMPS {
-    //         let offset = self.reader.read_i32::<O>().unwrap();
-    //         let length = self.reader.read_i32::<O>().unwrap();
-    //         let version = self.reader.read_i32::<O>().unwrap();
-    //         let mut four_cc = [0; 4];
-    //         self.reader
-    //             .read(&mut four_cc)
-    //             .expect(&format!("failed to read four_cc at lump index {}", index));
-
-    //         let lump = &mut header.lumps[index];
-    //         lump.offset = offset;
-    //         lump.length = length;
-    //         lump.version = version;
-    //         lump.four_cc = four_cc;
     //     }
     // }
 }
@@ -226,16 +170,18 @@ pub struct LumpDirEntry {
 mod tests {
     use super::*;
     use std::str;
+    use std::fs::File;
+    use std::io::BufReader;
 
     #[test]
     fn load_header() {
         let f = File::open("testfiles/water_v2.bsp").unwrap();
         let reader = BufReader::new(f);
 
-        let mut bsp_file = BspFile::new(reader);
-        let header = bsp_file.read_header().unwrap();
-
+        let bsp_file = BspFile::new(reader).unwrap();
+        let header = bsp_file.header;
         let string = str::from_utf8(&header.magic).unwrap();
+
         assert_eq!(string, "VBSP");
         assert_eq!(header.version, 20);
         assert_eq!(header.map_revision, 1555);
