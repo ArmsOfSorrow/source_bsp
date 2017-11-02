@@ -2,6 +2,7 @@ extern crate byteorder;
 
 use std::io;
 use std::io::prelude::*;
+use std::io::SeekFrom;
 use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
 use lumps::LumpData;
 
@@ -45,14 +46,14 @@ impl<T> BspFile<T> where T: Read + Seek {
         let len = lump.length;
 
         if offset != -1 && len != -1 {
-            //these differ by struct size
             let size = std::mem::size_of::<L>();
             let count = len as usize / size;
             let mut v: Vec<L> = Vec::with_capacity(count);
+            self.reader.seek(SeekFrom::Start(offset as u64)).unwrap();
 
             for i in 0..count {
                 let elem = L::load::<_, O>(&mut self.reader).unwrap();
-                v[i] = elem;
+                v.push(elem);
             }
             Some(v)
         } else {
@@ -60,35 +61,6 @@ impl<T> BspFile<T> where T: Read + Seek {
         }
     }
 }
-
-// impl BspFile {
-
-//     pub fn load_lump<R: BufRead + Seek, O: ByteOrder, L: LumpData>(
-//         &self,
-//         reader: &mut R,
-//     ) -> Option<Vec<L>> {
-
-//         let i = L::get_index();
-//         let lump = self.header.lumps[i];
-//         let offset = lump.offset;
-//         let len = lump.length;
-
-//         if offset != -1 && len != -1 {
-//             //these differ by struct size
-//             let size = std::mem::size_of::<L>();
-//             let count = len as usize / size;
-//             let mut v: Vec<L> = Vec::with_capacity(count);
-
-//             for i in 0..count {
-//                 let elem = L::load::<R, O>(reader).unwrap();
-//                 v[i] = elem;
-//             }
-//             Some(v)
-//         } else {
-//             None
-//         }
-//     }
-// }
 
 pub struct BspHeader {
     pub magic: [u8; 4],
@@ -139,6 +111,8 @@ impl BspHeader {
     }
 
     fn read_lump_directory<O: ByteOrder, T: Read + Seek>(&mut self, reader: &mut T) {
+        
+        //TODO: remove unwrap calls
         for index in 0..HEADER_LUMPS {
             let offset = reader.read_i32::<O>().unwrap();
             let length = reader.read_i32::<O>().unwrap();
@@ -148,7 +122,7 @@ impl BspHeader {
                 .read(&mut four_cc)
                 .expect(&format!("failed to read four_cc at lump index {}", index));
 
-            let mut lump = self.lumps[index];
+            let lump = &mut self.lumps[index];
             lump.offset = offset;
             lump.length = length;
             lump.version = version;
@@ -172,6 +146,7 @@ mod tests {
     use std::str;
     use std::fs::File;
     use std::io::BufReader;
+    use lumps::Vector;
 
     #[test]
     fn load_header() {
@@ -187,34 +162,19 @@ mod tests {
         assert_eq!(header.map_revision, 1555);
     }
 
-    // #[test]
-    // fn load_file_by_path() {
-    //     let path = Path::new("testfiles/water_v2.bsp");
-    //     let file = load_file(path).unwrap();
+    #[test]
+    fn load_vertex_lump() {
+        let f = File::open("testfiles/water_v2.bsp").unwrap();
+        let reader = BufReader::new(f);
 
-    //     let header = file.header;
-    //     let string = str::from_utf8(&header.magic).unwrap();
-    //     assert_eq!(string, "VBSP");
-    //     assert_eq!(header.version, 20);
+        let mut bsp_file = BspFile::new(reader).unwrap();
+        let vec_lump = bsp_file.read_lump::<LittleEndian, Vector>();
 
-    //     assert_eq!(header.map_revision, 1555);
-    // }
-
-    // #[test]
-    // fn plane_lumpdir_entry() {
-    //     let path = Path::new("testfiles/water_v2.bsp");
-    //     let file = load_file(path).unwrap();
-    //     let header = file.header;
-    //     let plane_lump = header.lumps[0];
-    //     assert_eq!(434240, plane_lump.length);
-    // }
-
-    // #[test]
-    // fn load_lump_data() {
-    //     let path = Path::new("testfiles/water_v2.bsp");
-    //     let file = load_file(path).unwrap();
-
-    //     //TODO: load lump data for index/variant
-        
-    // }
+        if let Some(v) = vec_lump {
+            assert_eq!(v[0], Vector::new(0.0,0.0,0.0));
+            assert_eq!(v[1], Vector::new(4854.69,13350.1,-861.289));
+        } else {
+            panic!("ain't got no vertices!");
+        }
+    }
 }
