@@ -3,7 +3,8 @@ use std::marker::Sized;
 use byteorder::{ByteOrder, ReadBytesExt};
 
 pub trait LumpData {
-     fn load<R: BufRead, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized;
+    //this can actually be read  instead of bufread
+     fn load<R: Read, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized;
      fn get_index() -> usize;
 }
 
@@ -24,7 +25,7 @@ impl Plane {
 }
 
 impl LumpData for Plane {
-    fn load<R: BufRead, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized {
+    fn load<R: Read, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized {
 
         let vector = Vector::load::<R, O>(reader)?;
         let dist = reader.read_f32::<O>()?;
@@ -52,7 +53,7 @@ impl Vector {
 }
 
 impl LumpData for Vector {
-    fn load<R: BufRead, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized {
+    fn load<R: Read, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized {
 
         let x = reader.read_f32::<O>()?;
         let y = reader.read_f32::<O>()?;

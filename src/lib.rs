@@ -37,28 +37,28 @@ impl<T> BspFile<T> where T: Read + Seek {
 //implementing Default for BspHeader would be easiest, I think. Pr just call read_header
 //from the constructor and make it private. It might be "overkill" but default wouldn't
 //work unless we box the LumpDirEntry array.
-    // pub fn read_lump<O: ByteOrder, L: LumpData>(&self) -> Option<Vec<L>> {
+    pub fn read_lump<O: ByteOrder, L: LumpData>(&mut self) -> Option<Vec<L>> {
 
-    //     let i = L::get_index();
-    //     let lump = self.header.lumps[i];
-    //     let offset = lump.offset;
-    //     let len = lump.length;
+        let i = L::get_index();
+        let lump = self.header.lumps[i];
+        let offset = lump.offset;
+        let len = lump.length;
 
-    //     if offset != -1 && len != -1 {
-    //         //these differ by struct size
-    //         let size = std::mem::size_of::<L>();
-    //         let count = len as usize / size;
-    //         let mut v: Vec<L> = Vec::with_capacity(count);
+        if offset != -1 && len != -1 {
+            //these differ by struct size
+            let size = std::mem::size_of::<L>();
+            let count = len as usize / size;
+            let mut v: Vec<L> = Vec::with_capacity(count);
 
-    //         for i in 0..count {
-    //             let elem = L::load::<_, O>(self.reader).unwrap();
-    //             v[i] = elem;
-    //         }
-    //         Some(v)
-    //     } else {
-    //         None
-    //     }
-    // }
+            for i in 0..count {
+                let elem = L::load::<_, O>(&mut self.reader).unwrap();
+                v[i] = elem;
+            }
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 // impl BspFile {
