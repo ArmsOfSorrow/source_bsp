@@ -51,7 +51,7 @@ impl<T> BspFile<T> where T: Read + Seek {
             let mut v: Vec<L> = Vec::with_capacity(count);
             self.reader.seek(SeekFrom::Start(offset as u64)).unwrap();
 
-            for i in 0..count {
+            for _ in 0..count {
                 let elem = L::load::<_, O>(&mut self.reader).unwrap();
                 v.push(elem);
             }
@@ -146,7 +146,7 @@ mod tests {
     use std::str;
     use std::fs::File;
     use std::io::BufReader;
-    use lumps::Vector;
+    use lumps::vector::Vector;
 
     #[test]
     fn load_header() {
