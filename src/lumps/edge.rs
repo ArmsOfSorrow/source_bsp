@@ -19,7 +19,6 @@ impl LumpData for Edge {
         let mut buf = [0u16; 2];
         buf[0] = reader.read_u16::<O>()?;
         buf[1] = reader.read_u16::<O>()?;
-        
 
         let edge = Edge::new(buf);
         Ok(edge)

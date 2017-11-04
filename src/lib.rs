@@ -147,6 +147,7 @@ mod tests {
     use std::fs::File;
     use std::io::BufReader;
     use lumps::vector::Vector;
+    use lumps::face::Face;
 
     #[test]
     fn load_header() {
@@ -175,6 +176,23 @@ mod tests {
             assert_eq!(v[1], Vector::new(4854.69,13350.1,-861.289));
         } else {
             panic!("ain't got no vertices!");
+        }
+    }
+
+    #[test]
+    fn load_face_lump() {
+        //TODO: change test map to be something from HL2 or portal
+        //and assert some values from there
+        let f = File::open("testfiles/water_v2.bsp").unwrap();
+        let reader = BufReader::new(f);
+
+        let mut bsp_file = BspFile::new(reader).unwrap();
+        let lump = bsp_file.read_lump::<LittleEndian, Face>();
+
+        if let Some(faces) = lump {
+            println!("{:?}", faces[0]);
+        } else {
+            panic!("ain't got no faces!");
         }
     }
 }
