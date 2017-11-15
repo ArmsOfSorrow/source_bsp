@@ -7,8 +7,11 @@ pub mod plane;
 pub mod edge;
 pub mod surfedge;
 pub mod face;
+pub mod brush;
 
 pub trait LumpData {
-     fn load<R: Read, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized;
-     fn get_index() -> usize;
+    //maybe we should call this load_item or something, since it loads a single struct
+    //(except for entities :/)
+    fn load<R: Read, O: ByteOrder>(reader: &mut R) -> ::io::Result<Self> where Self: Sized;
+    fn get_index() -> usize;
 }
